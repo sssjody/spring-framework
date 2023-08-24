@@ -61,7 +61,7 @@ public class ControlFlowPointcut implements Pointcut, ClassFilter, MethodMatcher
 	 * in the given class. If no method name is given, matches all control flows
 	 * below the given class.
 	 * @param clazz the clazz
-	 * @param methodName the name of the method (may be {@code null})
+	 * @param methodName the name of the method (maybe {@code null})
 	 */
 	public ControlFlowPointcut(Class<?> clazz, @Nullable String methodName) {
 		Assert.notNull(clazz, "Class must not be null");
