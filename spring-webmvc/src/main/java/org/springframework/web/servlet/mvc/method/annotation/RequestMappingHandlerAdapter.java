@@ -901,12 +901,17 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 		SessionAttributesHandler sessionAttrHandler = getSessionAttributesHandler(handlerMethod);
 		Class<?> handlerType = handlerMethod.getBeanType();
 		Set<Method> methods = this.modelAttributeCache.get(handlerType);
+		// 先拿到当前处理器所在Controller中的@ModelAttribute
 		if (methods == null) {
 			methods = MethodIntrospector.selectMethods(handlerType, MODEL_ATTRIBUTE_METHODS);
 			this.modelAttributeCache.put(handlerType, methods);
 		}
 		List<InvocableHandlerMethod> attrMethods = new ArrayList<>();
 		// Global methods first
+		// 遍历在@ControllerAdvice中被@InitBinder标注的方法，这些方法时全局的
+		// 首先会判断当前controller能否匹配@ControllerAdvice定义的条件
+		// 1. 是否在某个basePackage下  2. 是否是某些类的子类  3. 是否被标注某些注解
+		// 只有满足这些条件的controller才会被@ModelAttribute注解标注的方法增强
 		this.modelAttributeAdviceCache.forEach((controllerAdviceBean, methodSet) -> {
 			if (controllerAdviceBean.isApplicableToBeanType(handlerType)) {
 				Object bean = controllerAdviceBean.resolveBean();
@@ -915,6 +920,7 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 				}
 			}
 		});
+		// 当前方法中所在的@Controller所有的@ModelAttribute标注的方法都会使用
 		for (Method method : methods) {
 			Object bean = handlerMethod.getBean();
 			attrMethods.add(createModelAttributeMethod(binderFactory, bean, method));
@@ -922,8 +928,13 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 		return new ModelFactory(attrMethods, binderFactory, sessionAttrHandler);
 	}
 
+	/**
+	 * DataBinderFactory创建DataBinder除了会使用WebBindingInitializer之外
+	 * 还会使用之前解析的binderMethod对DataBinder进行扩展
+	 */
 	private InvocableHandlerMethod createModelAttributeMethod(WebDataBinderFactory factory, Object bean, Method method) {
 		InvocableHandlerMethod attrMethod = new InvocableHandlerMethod(bean, method);
+		// 参数解析器
 		if (this.argumentResolvers != null) {
 			attrMethod.setHandlerMethodArgumentResolvers(this.argumentResolvers);
 		}
@@ -936,11 +947,16 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 		Class<?> handlerType = handlerMethod.getBeanType();
 		Set<Method> methods = this.initBinderCache.get(handlerType);
 		if (methods == null) {
+			// 首先从当前处理器所在方法的controller中找出被@InitBinder标注的方法
 			methods = MethodIntrospector.selectMethods(handlerType, INIT_BINDER_METHODS);
 			this.initBinderCache.put(handlerType, methods);
 		}
 		List<InvocableHandlerMethod> initBinderMethods = new ArrayList<>();
 		// Global methods first
+		// 遍历在@ControllerAdvice中被@InitBinder标注的方法，这些方法时全局的
+		// 首先会判断当前controller能否匹配@ControllerAdvice定义的条件
+		// 1. 是否在某个basePackage下  2. 是否是某些类的子类  3. 是否被标注某些注解
+		// 只有满足这些条件的controller才会被@initbinder注解标注的方法增强
 		this.initBinderAdviceCache.forEach((controllerAdviceBean, methodSet) -> {
 			if (controllerAdviceBean.isApplicableToBeanType(handlerType)) {
 				Object bean = controllerAdviceBean.resolveBean();
@@ -949,6 +965,7 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 				}
 			}
 		});
+		// 当前方法所在Controller中所有的@InitBinder标注的方法都会使用
 		for (Method method : methods) {
 			Object bean = handlerMethod.getBean();
 			initBinderMethods.add(createInitBinderMethod(bean, method));
@@ -956,12 +973,20 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 		return createDataBinderFactory(initBinderMethods);
 	}
 
+	/**
+	 * 根据bean、处理器方法method 创建InvocableHandlerMethod
+	 * 相比HandlerMethod，InvocableHandlerMethod所有的参数都被InitBinder参数解析器解析了
+	 * DataBinderFactory创建DataBinder只会使用全局WebBindingInitializer初始化DataBinder
+	 */
 	private InvocableHandlerMethod createInitBinderMethod(Object bean, Method method) {
 		InvocableHandlerMethod binderMethod = new InvocableHandlerMethod(bean, method);
+		// InitBinder参数解析器
 		if (this.initBinderArgumentResolvers != null) {
 			binderMethod.setHandlerMethodArgumentResolvers(this.initBinderArgumentResolvers);
 		}
+		// DataBinder工厂，有些参数解析器需要使用到DataBinder做数据绑定
 		binderMethod.setDataBinderFactory(new DefaultDataBinderFactory(this.webBindingInitializer));
+		// 参数名发现器
 		binderMethod.setParameterNameDiscoverer(this.parameterNameDiscoverer);
 		return binderMethod;
 	}

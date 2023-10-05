@@ -94,17 +94,20 @@ class ResourcesBeanDefinitionParser implements BeanDefinitionParser {
 		RuntimeBeanReference pathMatcherRef = MvcNamespaceUtils.registerPathMatcher(null, context, source);
 		RuntimeBeanReference pathHelperRef = MvcNamespaceUtils.registerUrlPathHelper(null, context, source);
 
+		// 注册ResourceHttpRequestHandler 处理器处理静态资源
 		String resourceHandlerName = registerResourceHandler(context, element, pathHelperRef, source);
 		if (resourceHandlerName == null) {
 			return null;
 		}
 
 		Map<String, String> urlMap = new ManagedMap<>();
+		// 拿到配置的映射路径，也就是请求的映射路径
 		String resourceRequestPath = element.getAttribute("mapping");
 		if (!StringUtils.hasText(resourceRequestPath)) {
 			context.getReaderContext().error("The 'mapping' attribute is required.", context.extractSource(element));
 			return null;
 		}
+		// 能够处理的请求的映射路径 --> 能够处理静态资源请求的handler
 		urlMap.put(resourceRequestPath, resourceHandlerName);
 
 		RootBeanDefinition handlerMappingDef = new RootBeanDefinition(SimpleUrlHandlerMapping.class);
@@ -158,6 +161,7 @@ class ResourcesBeanDefinitionParser implements BeanDefinitionParser {
 	private String registerResourceHandler(ParserContext context, Element element,
 			RuntimeBeanReference pathHelperRef, @Nullable Object source) {
 
+		// 拿到资源对应的地址
 		String locationAttr = element.getAttribute("location");
 		if (!StringUtils.hasText(locationAttr)) {
 			context.getReaderContext().error("The 'location' attribute is required.", context.extractSource(element));

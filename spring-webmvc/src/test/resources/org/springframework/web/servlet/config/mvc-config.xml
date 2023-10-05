@@ -7,4 +7,10 @@
 
 	<mvc:annotation-driven />
 
+	<mvc:resources mapping="/img/**" location="/img/">
+		<mvc:resource-chain resource-cache="true">
+
+		</mvc:resource-chain>
+	</mvc:resources>
+
 </beans>
